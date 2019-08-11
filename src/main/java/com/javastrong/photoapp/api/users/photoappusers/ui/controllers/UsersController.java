@@ -37,7 +37,6 @@ public class UsersController {
         modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
 
         UserDto userDto = modelMapper.map(userDetails, UserDto.class);
-        usersService.createUser(userDto);
 
         UserDto createdUser = usersService.createUser(userDto);
 
