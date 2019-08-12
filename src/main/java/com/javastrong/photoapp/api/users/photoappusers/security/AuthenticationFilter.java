@@ -1,7 +1,14 @@
 package com.javastrong.photoapp.api.users.photoappusers.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.javastrong.photoapp.api.users.photoappusers.service.UsersService;
+import com.javastrong.photoapp.api.users.photoappusers.shared.UserDto;
 import com.javastrong.photoapp.api.users.photoappusers.ui.model.LoginRequestModel;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -14,8 +21,22 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
+
+import static com.netflix.appinfo.EurekaAccept.compact;
 
 public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter {
+
+    private UsersService usersService;
+    private Environment env;
+
+    @Autowired
+    public AuthenticationFilter(UsersService usersService, Environment env, AuthenticationManager authenticationManager) {
+        this.usersService = usersService;
+        this.env = env;
+        super.setAuthenticationManager(authenticationManager);
+    }
+
     @Override
     public Authentication attemptAuthentication(HttpServletRequest req,
                                                 HttpServletResponse res) throws AuthenticationException {
@@ -39,6 +60,15 @@ public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter {
                                             FilterChain chain,
                                             Authentication auth) throws IOException, ServletException{
         String userName = ((User) auth.getPrincipal()).getUsername();
+        UserDto userDetails = usersService.getUserDetailsByEmail(userName);
 
+        String token = Jwts.builder()
+                .setSubject(userDetails.getUserId())
+                .setExpiration(new Date(System.currentTimeMillis() + Long.parseLong(env.getProperty("token.expiration_time"))))
+                .signWith(SignatureAlgorithm.HS512, env.getProperty("token.secret"))
+                .compact();
+
+        res.addHeader("token",token);
+        res.addHeader("UserId", userDetails.getUserId());
     }
 }
